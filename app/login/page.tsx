@@ -1,16 +1,30 @@
-import { redirect } from "next/navigation";
-import LoginForm from "@/components/auth/LoginForm";
-import { createClient } from "@/src/utils/supabase/server";
+"use client";
 
-export default async function LoginPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/src/utils/supabase/client";
 
-  if (user) {
-    redirect("/dashboard");
+export default function LoginForm() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   }
-
-  return <LoginForm />;
 }

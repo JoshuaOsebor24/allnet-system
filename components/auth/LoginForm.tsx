@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
+import { createClient } from "@/src/utils/supabase/client";
 import {
   fieldClass,
   labelClass,

@@ -1,30 +1,28 @@
-"use client";
+import { redirect } from "next/navigation";
+import LoginForm from "@/components/auth/LoginForm";
+import { createClient } from "@/src/utils/supabase/server";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/src/utils/supabase/client";
+export default async function LoginPage() {
+  try {
+    const supabase = await createClient();
 
-export default function LoginForm() {
-  const router = useRouter();
-  const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.log(error);
-      return;
+    if (user) {
+      redirect("/dashboard");
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    return <LoginForm />;
+  } catch (err) {
+    console.error("LOGIN PAGE CRASH:", err);
+
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>Something broke</h1>
+        <pre>{JSON.stringify(err, null, 2)}</pre>
+      </div>
+    );
   }
 }

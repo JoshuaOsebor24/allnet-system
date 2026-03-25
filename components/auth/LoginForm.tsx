@@ -23,24 +23,32 @@ export default function LoginForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    console.log("LOGIN CLICKED", { email });
     setSubmitting(true);
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setErrorMessage(error.message);
+      console.log("LOGIN RESULT", { data, error });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setSubmitting(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      console.error("LOGIN CRASHED", err);
+      setErrorMessage(err instanceof Error ? err.message : "Unexpected error");
       setSubmitting(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
-
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl items-center gap-6 lg:grid-cols-[minmax(0,1.05fr),520px]">

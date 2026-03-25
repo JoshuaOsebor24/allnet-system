@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AUTH_STORAGE_KEY } from "@/components/app/auth";
 import {
   fieldClass,
   labelClass,
@@ -19,6 +20,7 @@ export default function LoginPage() {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
     router.push("/dashboard");
   }
 

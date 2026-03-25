@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AUTH_STORAGE_KEY } from "@/components/app/auth";
 import Modal from "@/components/app/Modal";
 import { useSystem } from "@/components/app/SystemProvider";
 import {
@@ -14,6 +16,7 @@ import { formatDisplayDate, isWithinDays, matchesQuery } from "@/components/app/
 import { AppIcon } from "@/components/dashboard/icons";
 
 export default function Topbar() {
+  const router = useRouter();
   const { state, resetData } = useSystem();
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -58,6 +61,12 @@ export default function Topbar() {
   const pendingMfa = state.users.filter(
     (user) => user.status === "Pending MFA",
   ).length;
+
+  function handleLogout() {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    setProfileOpen(false);
+    router.replace("/login");
+  }
 
   return (
     <>
@@ -216,6 +225,13 @@ export default function Topbar() {
                     Current session controls
                   </p>
                   <div className="mt-4 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className={secondaryButtonClass}
+                    >
+                      Log out
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

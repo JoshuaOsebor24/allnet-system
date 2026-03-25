@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { AUTH_STORAGE_KEY } from "@/components/app/auth";
 import BookingFormModal from "@/components/app/BookingFormModal";
 import {
   ghostButtonClass,
@@ -82,6 +83,30 @@ export default function DashboardPage() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [activityView, setActivityView] = useState<"daily" | "weekly">("daily");
   const [hoveredBar, setHoveredBar] = useState<string | null>(null);
+  const isAuthenticated = useSyncExternalStore(
+    () => () => undefined,
+    () => window.localStorage.getItem(AUTH_STORAGE_KEY) === "true",
+    () => false,
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-[var(--background)] px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-[var(--shadow-sm)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--primary)]" />
+            Checking access...
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const currentUser =
     state.users.find((user) => user.name === "Alex Chen") ?? state.users[0];

@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "app/delegates", "app/users", "app/bookings"  ],
   "exclude": ["node_modules"]
 }

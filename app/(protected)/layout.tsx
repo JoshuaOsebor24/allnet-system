@@ -1,16 +1,20 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import LoginForm from "@/components/auth/LoginForm";
 import { createClient } from "@/src/utils/supabase/server";
 
-export default async function LoginPage() {
+export default async function ProtectedLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect("/dashboard");
+  if (!user) {
+    redirect("/login");
   }
 
-  return <LoginForm />;
+  return children;
 }

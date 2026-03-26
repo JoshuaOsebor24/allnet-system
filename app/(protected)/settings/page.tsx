@@ -10,6 +10,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "@/components/app/ui";
+import LogoutButton from "@/components/app/LogoutButton";
 import { createId, matchesQuery } from "@/components/app/utils";
 import { useSystem } from "@/components/app/SystemProvider";
 import DashboardShell from "@/components/dashboard/DashboardShell";
@@ -705,6 +706,23 @@ export default function SettingsPage() {
           insightMessage={`${visibleSectionCount} sections in view. ${pendingApprovals.length} approvals are awaiting sign-off.`}
         />
       </div>
+
+      <section className={`${panelClass} mt-6 border-slate-200/80`}>
+        <div className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Session
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-950">
+              Sign out from Settings
+            </h2>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
+              End the current session and return to the login screen from this page.
+            </p>
+          </div>
+          <LogoutButton className={dangerButtonClass} />
+        </div>
+      </section>
 
       {jumpTargets.length > 0 ? (
         <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_24px_rgba(15,23,42,0.05)]">

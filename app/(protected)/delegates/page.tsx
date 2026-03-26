@@ -182,6 +182,43 @@ function getPrimaryAction(delegate: Delegate): PrimaryAction {
   return "Follow up";
 }
 
+function getDelegateSummary(delegate: Delegate) {
+  if (
+    delegate.progress === "Completed" &&
+    delegate.certificateStatus === "Pending"
+  ) {
+    return "This delegate has completed training, but certificate release is still outstanding. Review the record and issue the certificate before the expiry window closes.";
+  }
+
+  if (delegate.progress === "In training") {
+    return "This delegate is still actively progressing through the course. Completion should be confirmed before certification is issued.";
+  }
+
+  if (getRiskStatus(delegate) === "Urgent") {
+    return "This delegate record is urgent because the expiry date is due now or within the next 7 days.";
+  }
+
+  if (getRiskStatus(delegate) === "Expiring soon") {
+    return "This delegate record is approaching expiry soon and should be reviewed to avoid a compliance gap.";
+  }
+
+  return "This delegate is in a stable state with no immediate blocker, but the record can still be reviewed for certificate and renewal readiness.";
+}
+
+function getNextStepExplanation(delegate: Delegate) {
+  const action = getPrimaryAction(delegate);
+
+  if (action === "Issue certificate") {
+    return "Training is finished. The main operational step left is issuing the certificate.";
+  }
+
+  if (action === "Mark complete") {
+    return "The delegate is still marked as in training. Update the record to completed once delivery has finished.";
+  }
+
+  return "There is no direct workflow action required from this modal right now. Use Send Mail or review the record if timings or status change.";
+}
+
 function sortDelegates(left: Delegate, right: Delegate) {
   const leftQueue = getQueueState(left);
   const rightQueue = getQueueState(right);
@@ -353,15 +390,6 @@ export default function DelegatesPage() {
     setSelectedIds(filteredDelegates.map((delegate) => delegate.id));
   }
 
-  function handleFollowUp(delegate: Delegate) {
-    if (delegate.followUpSent) {
-      return;
-    }
-
-    updateDelegate(delegate.id, { followUpSent: true });
-    showToast(`Reminder sent for ${delegate.name}`);
-  }
-
   function handleMarkComplete(delegate: Delegate) {
     if (!isAdmin || delegate.progress === "Completed") {
       return;
@@ -395,8 +423,6 @@ export default function DelegatesPage() {
       handleMarkComplete(delegate);
       return;
     }
-
-    handleFollowUp(delegate);
   }
 
   function handleBulkAction(action: "issue" | "remind" | "complete") {
@@ -597,19 +623,6 @@ export default function DelegatesPage() {
                 {primaryAction}
               </button>
             ) : null}
-            {delegate.followUpSent ? (
-              <span className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-medium text-slate-600">
-                Reminder sent
-              </span>
-            ) : (
-              <button
-                type="button"
-                className={`${secondaryButtonClass} w-full justify-center`}
-                onClick={() => handleFollowUp(delegate)}
-              >
-                Follow up
-              </button>
-            )}
             {delegate.email ? (
               <button
                 type="button"
@@ -937,19 +950,6 @@ export default function DelegatesPage() {
                         {getPrimaryAction(delegate)}
                       </button>
                     ) : null}
-                    {delegate.followUpSent ? (
-                      <span className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600">
-                        Reminder sent
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={secondaryButtonClass}
-                        onClick={() => handleFollowUp(delegate)}
-                      >
-                        Follow up
-                      </button>
-                    )}
                     <button
                       type="button"
                       className="text-sm font-medium text-[var(--primary)] transition-colors duration-200 ease-in-out hover:text-[var(--primary-strong)]"
@@ -1076,30 +1076,28 @@ export default function DelegatesPage() {
                 Close
               </button>
               <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className={primaryButtonClass}
-                  onClick={() => handlePrimaryAction(selectedDelegate)}
-                  disabled={
-                    getPrimaryAction(selectedDelegate) === "Mark complete" &&
-                    !isAdmin
-                  }
-                >
-                  {getPrimaryAction(selectedDelegate)}
-                </button>
-                {selectedDelegate.followUpSent ? (
-                  <span className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-600">
-                    Reminder sent
-                  </span>
-                ) : (
+                {selectedDelegate.email ? (
                   <button
                     type="button"
                     className={secondaryButtonClass}
-                    onClick={() => handleFollowUp(selectedDelegate)}
+                    onClick={() => handleOpenMailModal(selectedDelegate)}
                   >
-                    Follow up
+                    Send Mail
                   </button>
-                )}
+                ) : null}
+                {getPrimaryAction(selectedDelegate) !== "Follow up" ? (
+                  <button
+                    type="button"
+                    className={primaryButtonClass}
+                    onClick={() => handlePrimaryAction(selectedDelegate)}
+                    disabled={
+                      getPrimaryAction(selectedDelegate) === "Mark complete" &&
+                      !isAdmin
+                    }
+                  >
+                    {getPrimaryAction(selectedDelegate)}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null
@@ -1114,6 +1112,9 @@ export default function DelegatesPage() {
               </p>
               <p className="mt-1 text-sm text-slate-600">
                 {selectedDelegate.recordId}
+              </p>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                {getDelegateSummary(selectedDelegate)}
               </p>
             </div>
 
@@ -1133,6 +1134,19 @@ export default function DelegatesPage() {
                 Filter by company
                 <AppIcon name="arrow_up_right" className="h-4 w-4" />
               </button>
+            </div>
+
+            <div className={`${panelClass} p-5`}>
+              <p className={labelClass}>Course and contact</p>
+              <p className="mt-2 text-base font-semibold text-slate-950">
+                {selectedDelegate.courseName}
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Email: {selectedDelegate.email}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                This is the primary delegate contact and training record used for certification, expiry tracking, and direct mail outreach.
+              </p>
             </div>
 
             <div className={`${panelClass} p-5`}>
@@ -1165,6 +1179,9 @@ export default function DelegatesPage() {
               </div>
               <p className="mt-4 text-sm text-slate-600">
                 Next action: {getPrimaryAction(selectedDelegate)}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {getNextStepExplanation(selectedDelegate)}
               </p>
             </div>
 

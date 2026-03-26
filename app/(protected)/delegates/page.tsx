@@ -32,6 +32,9 @@ import { AppIcon, type IconName } from "@/components/dashboard/icons";
 type RiskStatus = "Urgent" | "Expiring soon" | "Safe";
 type QueueTone = "danger" | "warning" | "neutral";
 type PrimaryAction = "Issue certificate" | "Mark complete" | "Follow up";
+type MailFeedback =
+  | { tone: "success" | "error"; message: string }
+  | null;
 
 const delegateColumns: DataTableColumn[] = [
   { key: "select", label: "" },
@@ -207,6 +210,11 @@ export default function DelegatesPage() {
     null,
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mailDelegateId, setMailDelegateId] = useState<string | null>(null);
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailMessage, setMailMessage] = useState("");
+  const [mailFeedback, setMailFeedback] = useState<MailFeedback>(null);
+  const [isSendingMail, setIsSendingMail] = useState(false);
 
   const isAdmin = state.users.some(
     (user) =>
@@ -218,6 +226,8 @@ export default function DelegatesPage() {
   const selectedDelegate =
     state.delegates.find((delegate) => delegate.id === selectedDelegateId) ??
     null;
+  const mailDelegate =
+    state.delegates.find((delegate) => delegate.id === mailDelegateId) ?? null;
 
   const companies = Array.from(new Set(state.delegates.map((delegate) => delegate.company))).sort();
   const courses = Array.from(new Set(state.delegates.map((delegate) => delegate.courseName))).sort();
@@ -231,6 +241,7 @@ export default function DelegatesPage() {
           const matchesSearch = matchesQuery(
             [
               delegate.name,
+              delegate.email,
               delegate.recordId,
               delegate.company,
               delegate.courseName,
@@ -426,6 +437,82 @@ export default function DelegatesPage() {
     );
   }
 
+  function handleOpenMailModal(delegate: Delegate) {
+    setMailDelegateId(delegate.id);
+    setMailSubject("");
+    setMailMessage("");
+    setMailFeedback(null);
+  }
+
+  function handleCloseMailModal() {
+    if (isSendingMail) {
+      return;
+    }
+
+    setMailDelegateId(null);
+    setMailSubject("");
+    setMailMessage("");
+    setMailFeedback(null);
+  }
+
+  async function handleSendMail() {
+    if (!mailDelegate) {
+      return;
+    }
+
+    const delegate = mailDelegate;
+    const subject = mailSubject.trim();
+    const message = mailMessage.trim();
+
+    if (!subject || !message) {
+      setMailFeedback({
+        tone: "error",
+        message: "Subject and message are required.",
+      });
+      return;
+    }
+
+    setIsSendingMail(true);
+    setMailFeedback(null);
+
+    try {
+      const response = await fetch("/api/send-delegate-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: delegate.email,
+          subject,
+          message,
+        }),
+      });
+
+      const data = (await response.json()) as { success?: boolean; error?: string };
+
+      if (!response.ok || !data.success) {
+        setMailFeedback({
+          tone: "error",
+          message: data.error ?? "Unable to send email right now.",
+        });
+        return;
+      }
+
+      setMailFeedback({
+        tone: "success",
+        message: `Email sent to ${delegate.email}.`,
+      });
+      showToast(`Email sent to ${delegate.name}`);
+    } catch {
+      setMailFeedback({
+        tone: "error",
+        message: "Unable to send email right now.",
+      });
+    } finally {
+      setIsSendingMail(false);
+    }
+  }
+
   const rows: DataTableRow[] = filteredDelegates.map((delegate) => {
     const risk = getRiskStatus(delegate);
     const queueState = getQueueState(delegate);
@@ -523,6 +610,15 @@ export default function DelegatesPage() {
                 Follow up
               </button>
             )}
+            {delegate.email ? (
+              <button
+                type="button"
+                className={`${secondaryButtonClass} w-full justify-center`}
+                onClick={() => handleOpenMailModal(delegate)}
+              >
+                Send Mail
+              </button>
+            ) : null}
             <button
               type="button"
               className="text-sm font-medium text-[var(--primary)] transition-colors duration-200 ease-in-out hover:text-[var(--primary-strong)]"
@@ -890,6 +986,79 @@ export default function DelegatesPage() {
           })
         }
       />
+
+      <Modal
+        open={mailDelegate !== null}
+        onClose={handleCloseMailModal}
+        title={mailDelegate ? `Send mail to ${mailDelegate.name}` : "Send mail"}
+        description="Compose and send an email to the selected delegate."
+        footer={
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              onClick={handleCloseMailModal}
+              disabled={isSendingMail}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={primaryButtonClass}
+              onClick={() => {
+                void handleSendMail();
+              }}
+              disabled={isSendingMail}
+            >
+              {isSendingMail ? "Sending..." : "Send"}
+            </button>
+          </div>
+        }
+      >
+        {mailDelegate ? (
+          <div className="grid gap-5">
+            <div className={`${panelClass} p-5`}>
+              <p className={labelClass}>Recipient email</p>
+              <p className="mt-2 text-base font-semibold text-slate-950">
+                {mailDelegate.email}
+              </p>
+            </div>
+
+            <label className="grid gap-2">
+              <span className={labelClass}>Subject</span>
+              <input
+                type="text"
+                value={mailSubject}
+                onChange={(event) => setMailSubject(event.target.value)}
+                className={fieldClass}
+                disabled={isSendingMail}
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className={labelClass}>Message</span>
+              <textarea
+                value={mailMessage}
+                onChange={(event) => setMailMessage(event.target.value)}
+                className={`${fieldClass} min-h-40 resize-y`}
+                disabled={isSendingMail}
+              />
+            </label>
+
+            {mailFeedback ? (
+              <div
+                className={`rounded-[var(--radius-sm)] border px-4 py-3 text-sm ${
+                  mailFeedback.tone === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-rose-200 bg-rose-50 text-rose-700"
+                }`}
+              >
+                {mailFeedback.message}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={selectedDelegate !== null}

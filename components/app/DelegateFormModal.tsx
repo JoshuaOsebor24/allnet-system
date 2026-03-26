@@ -32,6 +32,7 @@ export default function DelegateFormModal({
   initialValue,
 }: DelegateFormModalProps) {
   const [name, setName] = useState(initialValue?.name ?? "");
+  const [email, setEmail] = useState(initialValue?.email ?? "");
   const [company, setCompany] = useState(initialValue?.company ?? "");
   const [courseName, setCourseName] = useState(
     initialValue?.courseName ?? courses[0]?.name ?? "",
@@ -44,6 +45,7 @@ export default function DelegateFormModal({
   const [expiry, setExpiry] = useState(
     toDateInputValue(initialValue?.expiry ?? "2026-04-08"),
   );
+  const canSubmit = email.trim().length > 0;
 
   return (
     <Modal
@@ -59,9 +61,15 @@ export default function DelegateFormModal({
           <button
             type="button"
             className={primaryButtonClass}
+            disabled={!canSubmit}
             onClick={() => {
+              if (!canSubmit) {
+                return;
+              }
+
               onSubmit({
                 name,
+                email: email.trim(),
                 company,
                 courseName,
                 progress,
@@ -78,11 +86,21 @@ export default function DelegateFormModal({
     >
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2">
-          <span className={labelClass}>Delegate name</span>
+          <span className={labelClass}>Full name</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             className={fieldClass}
+          />
+        </label>
+        <label className="grid gap-2">
+          <span className={labelClass}>Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className={fieldClass}
+            required
           />
         </label>
         <label className="grid gap-2">

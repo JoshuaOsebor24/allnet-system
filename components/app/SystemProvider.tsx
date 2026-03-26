@@ -53,6 +53,7 @@ export type Delegate = {
   id: string;
   recordId: string;
   name: string;
+  email: string;
   company: string;
   courseName: string;
   progress: DelegateProgress;
@@ -224,6 +225,7 @@ const initialState: SystemState = {
       id: "delegate-1",
       recordId: "DL-10422",
       name: "Sarah Kendrick",
+      email: "sarah.kendrick@allnetlaw.com",
       company: "Allied Maritime Ltd",
       courseName: "CIPP/E",
       progress: "Completed",
@@ -234,6 +236,7 @@ const initialState: SystemState = {
       id: "delegate-2",
       recordId: "DL-10384",
       name: "Marcus Reed",
+      email: "marcus.reed@allnetlaw.com",
       company: "Northgate Facilities",
       courseName: "CIPM",
       progress: "In training",
@@ -244,6 +247,7 @@ const initialState: SystemState = {
       id: "delegate-3",
       recordId: "DL-10311",
       name: "Elena Lopez",
+      email: "elena.lopez@allnetlaw.com",
       company: "Bramley Infrastructure",
       courseName: "BCS Practitioner Certificate",
       progress: "Completed",
@@ -254,6 +258,7 @@ const initialState: SystemState = {
       id: "delegate-4",
       recordId: "DL-10265",
       name: "David Byrne",
+      email: "david.byrne@allnetlaw.com",
       company: "Kensworth Legal Services",
       courseName: "ISO 27001 Lead Implementer",
       progress: "In training",
@@ -264,6 +269,7 @@ const initialState: SystemState = {
       id: "delegate-5",
       recordId: "DL-10251",
       name: "Priya Nair",
+      email: "priya.nair@allnetlaw.com",
       company: "Halden Energy",
       courseName: "CIPP/E",
       progress: "Completed",
@@ -274,6 +280,7 @@ const initialState: SystemState = {
       id: "delegate-6",
       recordId: "DL-10239",
       name: "James Walker",
+      email: "james.walker@allnetlaw.com",
       company: "Westbridge Utilities",
       courseName: "CIPM",
       progress: "Completed",
@@ -284,6 +291,7 @@ const initialState: SystemState = {
       id: "delegate-7",
       recordId: "DL-10210",
       name: "Amina Yusuf",
+      email: "amina.yusuf@allnetlaw.com",
       company: "Northline Estates",
       courseName: "BCS Practitioner Certificate",
       progress: "In training",
@@ -484,6 +492,38 @@ function normalizeBooking(raw: Partial<Booking>, courses: Course[]): Booking {
   };
 }
 
+const sampleDelegateEmails: Record<string, string> = {
+  "Sarah Kendrick": "sarah.kendrick@allnetlaw.com",
+  "Marcus Reed": "marcus.reed@allnetlaw.com",
+  "Elena Lopez": "elena.lopez@allnetlaw.com",
+  "David Byrne": "david.byrne@allnetlaw.com",
+  "Priya Nair": "priya.nair@allnetlaw.com",
+  "James Walker": "james.walker@allnetlaw.com",
+  "Amina Yusuf": "amina.yusuf@allnetlaw.com",
+};
+
+function normalizeDelegate(raw: Partial<Delegate>): Delegate {
+  const fallbackEmail =
+    typeof raw.name === "string" ? sampleDelegateEmails[raw.name] : undefined;
+
+  return {
+    id: typeof raw.id === "string" ? raw.id : createId("delegate"),
+    recordId: typeof raw.recordId === "string" ? raw.recordId : "DL-00000",
+    name: typeof raw.name === "string" ? raw.name : "Unknown delegate",
+    email:
+      typeof raw.email === "string" && raw.email.trim().length > 0
+        ? raw.email
+        : fallbackEmail ?? "unknown.delegate@allnetlaw.com",
+    company: typeof raw.company === "string" ? raw.company : "Unknown company",
+    courseName:
+      typeof raw.courseName === "string" ? raw.courseName : "Unassigned course",
+    progress: raw.progress === "Completed" ? "Completed" : "In training",
+    certificateStatus: raw.certificateStatus === "Issued" ? "Issued" : "Pending",
+    expiry: typeof raw.expiry === "string" ? raw.expiry : "2026-04-08",
+    followUpSent: Boolean(raw.followUpSent),
+  };
+}
+
 function normalizeState(rawState: SystemState): SystemState {
   const courses = Array.isArray(rawState.courses)
     ? rawState.courses.map((course) => normalizeCourse(course as Partial<Course>))
@@ -497,6 +537,11 @@ function normalizeState(rawState: SystemState): SystemState {
           normalizeBooking(booking as Partial<Booking>, courses),
         )
       : initialState.bookings,
+    delegates: Array.isArray(rawState.delegates)
+      ? rawState.delegates.map((delegate) =>
+          normalizeDelegate(delegate as Partial<Delegate>),
+        )
+      : initialState.delegates,
     users: Array.isArray(rawState.users)
       ? rawState.users.map((user) =>
           normalizeUser(user as Partial<User> & { access?: unknown }),

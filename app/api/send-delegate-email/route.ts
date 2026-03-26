@@ -1,7 +1,4 @@
-import { Resend } from "resend";
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+import { MailConfigError, sendSystemEmail } from "@/lib/mail";
 
 type SendDelegateEmailRequest = {
   to?: string;
@@ -40,37 +37,22 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!resend) {
-      return Response.json(
-        { success: false, error: "Email service is not configured." },
-        { status: 500 },
-      );
-    }
-
-    if (!isNonEmptyString(process.env.RESEND_FROM_EMAIL)) {
-      return Response.json(
-        { success: false, error: "Sender email is not configured." },
-        { status: 500 },
-      );
-    }
-
-    const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL,
+    await sendSystemEmail({
       to,
       subject,
       html: buildHtml(message),
       text: message,
     });
 
-    if (result.error) {
+    return Response.json({ success: true });
+  } catch (error) {
+    if (error instanceof MailConfigError) {
       return Response.json(
-        { success: false, error: "Unable to send email right now." },
-        { status: 502 },
+        { success: false, error: error.message },
+        { status: 500 },
       );
     }
 
-    return Response.json({ success: true });
-  } catch {
     return Response.json(
       { success: false, error: "Invalid request or unexpected server error." },
       { status: 500 },

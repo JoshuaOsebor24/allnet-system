@@ -1,20 +1,61 @@
-import { Resend } from "resend";
+import { MailConfigError, sendSystemEmail } from "@/lib/mail";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+type SendEmailRequest = {
+  email?: string;
+  subject?: string;
+  message?: string;
+};
 
-export async function POST(req: Request) {
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildHtml(message: string) {
+  return `<p>${escapeHtml(message).replaceAll("\n", "<br />")}</p>`;
+}
+
+export async function POST(request: Request) {
   try {
-    const { email, subject, message } = await req.json();
+    const body = (await request.json()) as SendEmailRequest;
+    const email = body.email?.trim();
+    const subject = body.subject?.trim();
+    const message = body.message?.trim();
 
-    const data = await resend.emails.send({
-      from: "AllNet <onboarding@resend.dev>",
+    if (!isNonEmptyString(email) || !isNonEmptyString(subject) || !isNonEmptyString(message)) {
+      return Response.json(
+        { success: false, error: "Missing required fields: email, subject, and message." },
+        { status: 400 },
+      );
+    }
+
+    await sendSystemEmail({
       to: email,
       subject,
-      html: `<p>${message}</p>`,
+      html: buildHtml(message),
+      text: message,
     });
 
-    return Response.json({ success: true, data });
+    return Response.json({ success: true });
   } catch (error) {
-    return Response.json({ success: false, error });
+    if (error instanceof MailConfigError) {
+      return Response.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return Response.json(
+      { success: false, error: "Invalid request or unexpected server error." },
+      { status: 500 },
+    );
   }
 }
